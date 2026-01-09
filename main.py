@@ -11,7 +11,9 @@ from modules.GlobalVariables import *
 from modules.SettingsWindow import SettingsWindow
 from modules.LogsWindow import LogsWindow
 
-# Utility functions
+# ------------------------
+# Utility Functions
+# ------------------------
 def locateImage(img, threshold: float):
     screenshot = pyautogui.screenshot()
     screenshot = cv2.cvtColor(numpy.array(screenshot), cv2.COLOR_RGB2BGR)
@@ -46,7 +48,9 @@ def changeImageSize(path: str, monitorSize: list[int], lastUsedSize: list[int]) 
     outIMG = cv2.resize(img, targetSize, cv2.INTER_LINEAR)
     cv2.imwrite(path, outIMG)
 
+# ------------------------
 # Main Window
+# ------------------------
 class MainWindow(QMainWindow):
     def __init__(self, title: str):
         super().__init__()
@@ -59,7 +63,9 @@ class MainWindow(QMainWindow):
         self.move((screenSize.width() // 2) - (self.width() // 2), 0)
         self.setStyleSheet(CSS)
 
-        # State variables
+        # ------------------------
+        # State Variables
+        # ------------------------
         self.isFishing = False
         self.tryCatchFish = False
         self.shouldStopFishing = False
@@ -67,12 +73,17 @@ class MainWindow(QMainWindow):
         self.startFishingTimer = 0
         self.startCheckMealTimer = 0
         self.startCheckPotionTimer = 0
+        self.maxTimeForWait = 70
 
+        # ------------------------
         # Windows
+        # ------------------------
         self.settingsWindow = SettingsWindow(self)
         self.logsWindow = LogsWindow(self)
 
+        # ------------------------
         # UI Buttons
+        # ------------------------
         self.btn_start = Button(self, "START", 2, 2, 75, 26, "btn_standart", self.startFishing)
         self.btn_start.setToolTip("Start fishing")
         Button(self, EXIT_ICON, self.width()-28, 2, 26, 26, "btn_red", self.closeEvent).setToolTip("Close window")
@@ -80,17 +91,23 @@ class MainWindow(QMainWindow):
         Button(self, LOGS_ICON, self.width()-84, 2, 26, 26, "btn_standart", self.openLogsWindow).setToolTip("History window")
         self.__countLabel = Label(self, 79, 2, 135, 26, "", f"Caught: {self.fishCount}")
 
-        # Timer to check stop condition
+        # ------------------------
+        # Timer
+        # ------------------------
         self.ShouldStopFishingTimer = QTimer(self)
         self.ShouldStopFishingTimer.setInterval(500)
         self.ShouldStopFishingTimer.timeout.connect(self.checkShouldStopFishing)
         self.ShouldStopFishingTimer.start()
 
-        # Fishing thread
+        # ------------------------
+        # Fishing Thread
+        # ------------------------
         self.fishingThread = threading.Thread(target=self.fishing, daemon=True)
         self.fishingThread.start()
 
-    # UI Handlers
+    # ------------------------
+    # UI Methods
+    # ------------------------
     def openSettings(self):
         self.settingsWindow.setVisible(not self.settingsWindow.isVisible())
 
@@ -127,7 +144,9 @@ class MainWindow(QMainWindow):
         self.logsWindow.close()
         self.close()
 
-    # Fishing logic
+    # ------------------------
+    # Fishing Logic
+    # ------------------------
     def fishing(self):
         while self.isVisible():
             if not self.isFishing:
@@ -143,7 +162,7 @@ class MainWindow(QMainWindow):
                 self.tryCatchFish = True
                 self.startThisTry = time.time()
 
-            # Try catching fish
+            # Handle catch
             if self.tryCatchFish:
                 self.handleCatch()
 
@@ -154,17 +173,17 @@ class MainWindow(QMainWindow):
                 else:
                     self.endTry("timeError")
 
-            # Meal consumption
+            # Consumables
             if mealElapsed >= self.settingsWindow.mealTimer and self.settingsWindow.useMeal:
                 self.consumeMeal()
-
-            # Potion consumption
             if potionElapsed >= self.settingsWindow.potionTimer and self.settingsWindow.usePotion:
                 self.consumePotion()
 
             time.sleep(0.25)
 
-    # Catch handler
+    # ------------------------
+    # Handle Catch
+    # ------------------------
     def handleCatch(self):
         timeForThisTry = time.time() - self.startThisTry
         caughtSomething = False
@@ -182,20 +201,24 @@ class MainWindow(QMainWindow):
         if timeForThisTry > self.settingsWindow.timeForTry and not caughtSomething:
             self.endTry("timeError")
 
+        # Only click once to reel in
         if not caughtSomething:
             pyautogui.click(button="left")
 
-    # End try safely
+    # ------------------------
+    # End Try
+    # ------------------------
     def endTry(self, log: str):
-    if not self.tryCatchFish:
-        return  # Prevent double cast
-    self.tryCatchFish = False
-    self.startFishingTimer = time.time()
-    self.logsWindow.logs.append([time.localtime(), log])
-    time.sleep(0.2)
-    pyautogui.click(button="left")  # Only click to reel in, do NOT press rod key
+        if not self.tryCatchFish:
+            return
+        self.tryCatchFish = False
+        self.startFishingTimer = time.time()
+        self.logsWindow.logs.append([time.localtime(), log])
+        pyautogui.click(button="left")  # Only reel in; never touch rod key
 
-    # Fish count
+    # ------------------------
+    # Fish Count
+    # ------------------------
     def addFishCount(self):
         self.fishCount += 1
         self.__countLabel.setText(f"Caught: {self.fishCount}")
@@ -204,30 +227,29 @@ class MainWindow(QMainWindow):
         self.fishCount = 0
         self.__countLabel.setText(f"Caught: {self.fishCount}")
 
+    # ------------------------
     # Consumables
+    # ------------------------
     def consumeMeal(self):
         keyboard.press_and_release(self.settingsWindow.mealKey)
-        pyautogui.click(button="left")
         time.sleep(0.75)
-        keyboard.press_and_release(self.settingsWindow.rodKey)
-        pyautogui.click(button="left")
+        pyautogui.click(button="left")  # only click, do NOT touch rod
         self.logsWindow.logs.append([time.localtime(), "consumeMeal"])
         self.startFishingTimer = time.time()
         self.startCheckMealTimer = time.time()
 
     def consumePotion(self):
         keyboard.press_and_release(self.settingsWindow.potionKey)
-        if self.settingsWindow.potionKey != "e":
-            pyautogui.click(button="left")
-            time.sleep(0.75)
-            keyboard.press_and_release(self.settingsWindow.rodKey)
-            pyautogui.click(button="left")
+        time.sleep(0.75)
+        pyautogui.click(button="left")  # only click, do NOT touch rod
         self.logsWindow.logs.append([time.localtime(), "consumePotion"])
         self.startFishingTimer = time.time()
         self.startCheckPotionTimer = time.time()
 
 
-# --- STARTUP ---
+# ------------------------
+# Startup
+# ------------------------
 if __name__ == "__main__":
     user32 = ctypes.windll.user32
     user32.SetProcessDPIAware()

@@ -187,15 +187,13 @@ class MainWindow(QMainWindow):
 
     # End try safely
     def endTry(self, log: str):
-        if not self.tryCatchFish:
-            return  # Prevent double cast
-        self.tryCatchFish = False
-        self.startFishingTimer = time.time()
-        self.logsWindow.logs.append([time.localtime(), log])
-        time.sleep(0.2)
-        keyboard.press_and_release(self.settingsWindow.rodKey)
-        time.sleep(0.2)
-        pyautogui.click(button="left")
+    if not self.tryCatchFish:
+        return  # Prevent double cast
+    self.tryCatchFish = False
+    self.startFishingTimer = time.time()
+    self.logsWindow.logs.append([time.localtime(), log])
+    time.sleep(0.2)
+    pyautogui.click(button="left")  # Only click to reel in, do NOT press rod key
 
     # Fish count
     def addFishCount(self):

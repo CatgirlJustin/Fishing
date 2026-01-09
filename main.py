@@ -208,25 +208,26 @@ class MainWindow(QMainWindow):
     # ------------------------
     # End Try
     # ------------------------
- def endTry(self, log: str):
+def endTry(self, log: str):
     """
-    Handles finishing a catch.
-    Reels in the fish and recasts automatically with the same rod/bait.
+    Reels in the fish and recasts automatically without touching the rod key,
+    preserving the bait.
     """
     if not self.tryCatchFish:
         return
+
+    # Stop current try
     self.tryCatchFish = False
     self.startFishingTimer = time.time()
     self.logsWindow.logs.append([time.localtime(), log])
 
-    # Step 1: Reel in the catch
+    # Reel in the fish (click once)
     pyautogui.click(button="left")
-    time.sleep(0.2)  # small pause to let the game register the reel
+    time.sleep(0.15)  # very small delay to let the game register the reel
 
-    # Step 2: Recast without pressing the rod key
+    # Recast (click again) without pressing the rod key
     pyautogui.click(button="left")
-    time.sleep(0.1)  # optional tiny delay
-
+    # DO NOT touch self.tryCatchFish or other flags here — let the loop handle the next bite naturally
 
     # ------------------------
     # Fish Count
